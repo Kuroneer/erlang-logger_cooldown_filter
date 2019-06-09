@@ -102,6 +102,9 @@ get_log_event_key( LogEvent = #{level := Level, msg := Msg}, _FilterArgs) ->
 
     Key = case Msg of
               {string, String} -> {Level, Location, String};
+              {Format, Args}   ->
+                  ArgsWithoutPids = [ Arg || Arg <- Args, not is_pid(Arg) ],
+                  {Level, Location, erlang:phash2(Format), erlang:phash2(ArgsWithoutPids)};
               _                -> {Level, Location, erlang:phash2(Msg)}
           end,
     {Key, CooldownMs}.

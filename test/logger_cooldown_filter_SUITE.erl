@@ -42,6 +42,11 @@ independent_cooldowns(_Config) ->
     OtherLogEventWithOtherParam = LogEvent#{msg => {"Message with params: ~p", ['other']}},
     true = OtherLogEventWithOtherParam /= OtherLogEvent,
     OtherLogEventWithOtherParam = logger_cooldown_filter:try_log_cooldown(OtherLogEventWithOtherParam, undefined),
+    % This event gets other with a Pid
+    OtherLogEventWithPid1 = LogEvent#{msg => {"Message with params: ~p", [self()]}},
+    OtherLogEventWithPid1 = logger_cooldown_filter:try_log_cooldown(OtherLogEventWithPid1, undefined),
+    OtherLogEventWithPid2 = LogEvent#{msg => {"Message with params: ~p", [spawn_link(fun() -> ok end)]}},
+    stop = logger_cooldown_filter:try_log_cooldown(OtherLogEventWithPid2, undefined),
 
     % The key includes the level
     WarningLogEvent = LogEvent#{level => warning},

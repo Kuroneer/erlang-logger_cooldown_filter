@@ -1,6 +1,6 @@
 {application, logger_cooldown_filter,
  [{description, "logger filter that allows to have different cooldowns per event"},
-  {vsn, "0.1.1"},
+  {vsn, "0.1.2"},
   {registered, [logger_cooldown_filter]},
   {mod, {logger_cooldown_filter_app, []}},
   {applications,
