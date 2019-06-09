@@ -3,8 +3,13 @@
 %%% Provides a simple cooldown filter to use in otp's logger.
 %%% This filter stops events from reaching the handler if the event's
 %%% key has already triggered a cooldown timer.
+%%%
 %%% You can provide custom functions to generate the key and cooldown
-%%% for an event
+%%% for an event.
+%%%
+%%% By default, it only filters same non-report messages below critical
+%%% level.
+%%%
 %%% @end
 %%% Part of logger_cooldown_filter Erlang App
 %%% MIT License
@@ -52,6 +57,8 @@ try_log_cooldown(LogEvent, FilterArgs) ->
     case get_key(LogEvent, FilterArgs) of
         undefined ->
             LogEvent;
+        {undefined, _CooldownMs} ->
+            LogEvent;
         {Key, CooldownMs} when is_integer(CooldownMs), CooldownMs > 0 ->
             Expiration = erlang:monotonic_time() + erlang:convert_time_unit(CooldownMs, millisecond, native),
             case catch ets:update_counter(?MODULE, Key, 1, {Key, 0, Expiration}) of
@@ -68,10 +75,16 @@ try_log_cooldown(LogEvent, FilterArgs) ->
     end.
 
 -spec get_log_event_key(logger:log_event(), logger:filter_arg()) -> key_and_cooldown().
-get_log_event_key(_LogEvent = #{level := emergency        }, _FilterArgs) -> undefined;
-get_log_event_key(_LogEvent = #{level := alert            }, _FilterArgs) -> undefined;
-get_log_event_key(_LogEvent = #{level := critical         }, _FilterArgs) -> undefined;
-get_log_event_key(_LogEvent = #{level := Level, msg := Msg}, _FilterArgs) ->
+get_log_event_key(_LogEvent = #{meta := #{logger_filter_key := undefined}}, _FilterArgs) -> undefined;
+get_log_event_key(_LogEvent = #{meta := #{
+                                  logger_filter_key := Key,
+                                  logger_filter_cooldownms := CooldownMs
+                                 }}, _FilterArgs) when is_integer(CooldownMs), CooldownMs > 0 -> {Key, CooldownMs};
+get_log_event_key(_LogEvent = #{msg := {report, _}}, _FilterArgs) -> undefined; % Reports bypass the filter
+get_log_event_key(_LogEvent = #{level := emergency}, _FilterArgs) -> undefined;
+get_log_event_key(_LogEvent = #{level := alert    }, _FilterArgs) -> undefined;
+get_log_event_key(_LogEvent = #{level := critical }, _FilterArgs) -> undefined;
+get_log_event_key( LogEvent = #{level := Level, msg := Msg}, _FilterArgs) ->
     CooldownMs = case Level of
                      error   ->  1000;
                      warning ->  2000;
@@ -79,14 +92,19 @@ get_log_event_key(_LogEvent = #{level := Level, msg := Msg}, _FilterArgs) ->
                      info    -> 10000;
                      _       -> 30000
                  end,
+
+    Location = case LogEvent of
+                   #{meta := Meta} ->
+                       {maps:get(line, Meta, undefined), maps:get(file, Meta, undefined)};
+                   _ ->
+                       undefined
+               end,
+
     Key = case Msg of
-              {report, #{format := Format}} -> Format;
-              {report, Report} -> Report;
-              {string, String} -> String;
-              {Format, Terms} when is_list(Terms) -> Format;
-              _ -> Msg
+              {string, String} -> {Level, Location, String};
+              _                -> {Level, Location, erlang:phash2(Msg)}
           end,
-    {{Level, Key}, CooldownMs}.
+    {Key, CooldownMs}.
 
 
 %%====================================================================
