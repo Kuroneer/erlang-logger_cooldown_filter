@@ -17,7 +17,7 @@ end_per_suite(Config) ->
     application:stop(logger_cooldown_filter),
     Config.
 
-init_per_test_case(_TestCase, Config) ->
+init_per_testcase(_TestCase, Config) ->
     ets:delete_all_objects(logger_cooldown_filter),
     Config.
 
