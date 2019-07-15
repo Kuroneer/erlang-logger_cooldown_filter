@@ -21,6 +21,9 @@ init_per_testcase(_TestCase, Config) ->
     ets:delete_all_objects(logger_cooldown_filter),
     Config.
 
+end_per_testcase(_TestCase, _Config) ->
+    ok.
+
 
 %%====================================================================
 %% Test cases
