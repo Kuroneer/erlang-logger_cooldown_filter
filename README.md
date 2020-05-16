@@ -1,4 +1,4 @@
-# parse_transform_compiled_regex
+# logger_cooldown_filter
 
 Provides a simple cooldown filter to use in otp's logger.  
 This filter stops events from reaching the handler if the event's
